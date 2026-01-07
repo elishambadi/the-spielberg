@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Spielberg - AI Script Writer</title>
+    {% load static %}
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Courier New', monospace;
+            background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
+            color: #e0e0e0;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        header {
+            text-align: center;
+            padding: 40px 0;
+            border-bottom: 2px solid #444;
+            margin-bottom: 40px;
+        }
+        
+        h1 {
+            font-size: 3em;
+            color: #f9d342;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+            margin-bottom: 10px;
+        }
+        
+        .tagline {
+            font-size: 1.2em;
+            color: #aaa;
+            font-style: italic;
+        }
+        
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 30px;
+        }
+        
+        @media (min-width: 768px) {
+            .main-content {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+        
+        .panel {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid #444;
+            border-radius: 10px;
+            padding: 30px;
+            backdrop-filter: blur(10px);
+        }
+        
+        .panel h2 {
+            color: #f9d342;
+            margin-bottom: 20px;
+            font-size: 1.8em;
+            border-bottom: 2px solid #444;
+            padding-bottom: 10px;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #ccc;
+            font-weight: bold;
+        }
+        
+        input[type="text"],
+        input[type="password"],
+        textarea,
+        select {
+            width: 100%;
+            padding: 12px;
+            background: rgba(0,0,0,0.3);
+            border: 1px solid #555;
+            border-radius: 5px;
+            color: #e0e0e0;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+        }
+        
+        input[type="text"]:focus,
+        input[type="password"]:focus,
+        textarea:focus,
+        select:focus {
+            outline: none;
+            border-color: #f9d342;
+            box-shadow: 0 0 10px rgba(249,211,66,0.3);
+        }
+        
+        textarea {
+            min-height: 150px;
+            resize: vertical;
+        }
+        
+        button {
+            background: linear-gradient(135deg, #f9d342 0%, #e8c232 100%);
+            color: #1a1a1a;
+            padding: 12px 30px;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-family: 'Courier New', monospace;
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(249,211,66,0.4);
+        }
+        
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .script-output {
+            background: rgba(0,0,0,0.4);
+            border: 1px solid #555;
+            border-radius: 5px;
+            padding: 20px;
+            min-height: 400px;
+            white-space: pre-wrap;
+            font-family: 'Courier New', monospace;
+            line-height: 1.6;
+            overflow-y: auto;
+            max-height: 600px;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #f9d342;
+        }
+        
+        .spinner {
+            border: 3px solid rgba(249,211,66,0.3);
+            border-top: 3px solid #f9d342;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .error {
+            background: rgba(255,0,0,0.1);
+            border: 1px solid #ff4444;
+            color: #ff6666;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        
+        .success {
+            background: rgba(0,255,0,0.1);
+            border: 1px solid #44ff44;
+            color: #66ff66;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        
+        .api-key-info {
+            background: rgba(249,211,66,0.1);
+            border: 1px solid #f9d342;
+            color: #f9d342;
+            padding: 12px;
+            border-radius: 5px;
+            margin-bottom: 15px;
+            font-size: 0.9em;
+        }
+        
+        .action-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        
+        .action-buttons button {
+            flex: 1;
+        }
+        
+        .script-format {
+            color: #888;
+            font-size: 0.9em;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🎬 The Spielberg</h1>
+            <p class="tagline">AI-Powered Script Writing Assistant</p>
+        </header>
+        
+        <div class="main-content" x-data="scriptWriter()">
+            <!-- Input Panel -->
+            <div class="panel">
+                <h2>Script Generation</h2>
+                
+                <div class="api-key-info">
+                    💡 Get your Claude API key from <a href="https://console.anthropic.com/" target="_blank" style="color: #f9d342;">console.anthropic.com</a>
+                </div>
+                
+                <div x-show="error" class="error" x-text="error"></div>
+                <div x-show="success" class="success" x-text="success"></div>
+                
+                <div class="form-group">
+                    <label for="api-key">Claude API Key *</label>
+                    <input 
+                        type="password" 
+                        id="api-key" 
+                        x-model="apiKey"
+                        placeholder="sk-ant-..."
+                        @input="error = ''"
+                    >
+                </div>
+                
+                <div class="form-group">
+                    <label for="script-type">Script Type</label>
+                    <select id="script-type" x-model="scriptType">
+                        <option value="screenplay">Screenplay (Full Format)</option>
+                        <option value="treatment">Treatment (Narrative)</option>
+                        <option value="outline">Outline (Story Beats)</option>
+                    </select>
+                    <p class="script-format" x-text="getScriptTypeDescription()"></p>
+                </div>
+                
+                <div class="form-group">
+                    <label for="prompt">What story would you like to tell? *</label>
+                    <textarea 
+                        id="prompt" 
+                        x-model="prompt"
+                        placeholder="Example: Write the opening scene of a sci-fi thriller about a detective who discovers that memories can be stolen. Set in a noir-style future city. Include strong visual details and snappy dialogue."
+                        @input="error = ''"
+                    ></textarea>
+                </div>
+                
+                <button 
+                    @click="generateScript()"
+                    :disabled="loading || !apiKey || !prompt"
+                >
+                    <span x-show="!loading">✨ Generate Script</span>
+                    <span x-show="loading">Generating...</span>
+                </button>
+                
+                <div class="action-buttons" x-show="generatedScript">
+                    <button @click="copyToClipboard()">📋 Copy</button>
+                    <button @click="saveScript()">💾 Save</button>
+                </div>
+            </div>
+            
+            <!-- Output Panel -->
+            <div class="panel">
+                <h2>Generated Script</h2>
+                
+                <div x-show="loading" class="loading">
+                    <div class="spinner"></div>
+                    <p>Claude is crafting your script...</p>
+                </div>
+                
+                <div x-show="!loading && !generatedScript" style="text-align: center; padding: 40px; color: #666;">
+                    <p>Your generated script will appear here.</p>
+                    <p style="margin-top: 10px; font-size: 0.9em;">Enter your API key and prompt to get started.</p>
+                </div>
+                
+                <div x-show="!loading && generatedScript" class="script-output" x-text="generatedScript"></div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Get CSRF token from cookie
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+        
+        function scriptWriter() {
+            return {
+                apiKey: '',
+                prompt: '',
+                scriptType: 'screenplay',
+                generatedScript: '',
+                loading: false,
+                error: '',
+                success: '',
+                
+                getScriptTypeDescription() {
+                    const descriptions = {
+                        screenplay: 'Professional screenplay format with scene headings, action, and dialogue',
+                        treatment: 'Narrative prose describing the story from beginning to end',
+                        outline: 'Structured breakdown of acts, sequences, and story beats'
+                    };
+                    return descriptions[this.scriptType];
+                },
+                
+                async generateScript() {
+                    if (!this.apiKey || !this.prompt) {
+                        this.error = 'Please provide both API key and prompt';
+                        return;
+                    }
+                    
+                    this.loading = true;
+                    this.error = '';
+                    this.success = '';
+                    this.generatedScript = '';
+                    
+                    try {
+                        const csrftoken = getCookie('csrftoken');
+                        const response = await fetch('/api/generate/', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRFToken': csrftoken,
+                            },
+                            body: JSON.stringify({
+                                api_key: this.apiKey,
+                                prompt: this.prompt,
+                                script_type: this.scriptType
+                            })
+                        });
+                        
+                        const data = await response.json();
+                        
+                        if (data.error) {
+                            this.error = data.error;
+                        } else {
+                            this.generatedScript = data.script;
+                            this.success = 'Script generated successfully!';
+                            setTimeout(() => this.success = '', 3000);
+                        }
+                    } catch (err) {
+                        this.error = 'Failed to generate script: ' + err.message;
+                    } finally {
+                        this.loading = false;
+                    }
+                },
+                
+                async copyToClipboard() {
+                    try {
+                        await navigator.clipboard.writeText(this.generatedScript);
+                        this.success = 'Script copied to clipboard!';
+                        setTimeout(() => this.success = '', 3000);
+                    } catch (err) {
+                        this.error = 'Failed to copy: ' + err.message;
+                    }
+                },
+                
+                async saveScript() {
+                    const title = prompt('Enter a title for your script:');
+                    if (!title) return;
+                    
+                    try {
+                        const csrftoken = getCookie('csrftoken');
+                        const response = await fetch('/api/save/', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRFToken': csrftoken,
+                            },
+                            body: JSON.stringify({
+                                title: title,
+                                content: this.generatedScript,
+                                genre: this.scriptType,
+                                logline: this.prompt.substring(0, 200)
+                            })
+                        });
+                        
+                        const data = await response.json();
+                        
+                        if (data.error) {
+                            this.error = data.error;
+                        } else {
+                            this.success = 'Script saved successfully!';
+                            setTimeout(() => this.success = '', 3000);
+                        }
+                    } catch (err) {
+                        this.error = 'Failed to save script: ' + err.message;
+                    }
+                }
+            }
+        }
+    </script>
+</body>
+</html>
