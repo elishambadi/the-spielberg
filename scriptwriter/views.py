@@ -1,17 +1,17 @@
 from django.shortcuts import render
 from django.http import JsonResponse
-from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
+from django.views.decorators.csrf import ensure_csrf_cookie
 import json
 from anthropic import Anthropic
 from .models import ScriptProject
 
+@ensure_csrf_cookie
 def index(request):
     """Main view for the script writing interface"""
     projects = ScriptProject.objects.all()
     return render(request, 'scriptwriter/index.html', {'projects': projects})
 
-@csrf_exempt
 @require_http_methods(["POST"])
 def generate_script(request):
     """API endpoint to generate script using Claude AI"""
@@ -55,7 +55,6 @@ def generate_script(request):
             'error': str(e)
         }, status=500)
 
-@csrf_exempt
 @require_http_methods(["POST"])
 def save_script(request):
     """Save a script project"""

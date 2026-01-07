@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>The Spielberg - AI Script Writer</title>
+    {% load static %}
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
     <style>
         * {
@@ -299,6 +300,22 @@
     </div>
     
     <script>
+        // Get CSRF token from cookie
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+        
         function scriptWriter() {
             return {
                 apiKey: '',
@@ -330,10 +347,12 @@
                     this.generatedScript = '';
                     
                     try {
+                        const csrftoken = getCookie('csrftoken');
                         const response = await fetch('/api/generate/', {
                             method: 'POST',
                             headers: {
                                 'Content-Type': 'application/json',
+                                'X-CSRFToken': csrftoken,
                             },
                             body: JSON.stringify({
                                 api_key: this.apiKey,
@@ -373,10 +392,12 @@
                     if (!title) return;
                     
                     try {
+                        const csrftoken = getCookie('csrftoken');
                         const response = await fetch('/api/save/', {
                             method: 'POST',
                             headers: {
                                 'Content-Type': 'application/json',
+                                'X-CSRFToken': csrftoken,
                             },
                             body: JSON.stringify({
                                 title: title,
