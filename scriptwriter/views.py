@@ -2,19 +2,272 @@ from django.shortcuts import render
 from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
 from django.views.decorators.csrf import ensure_csrf_cookie
+from django.contrib.auth.decorators import login_required
+from rest_framework import viewsets, status
+from rest_framework.decorators import action, api_view, permission_classes
+from rest_framework.response import Response
+from rest_framework.permissions import IsAuthenticated, AllowAny
 import json
+import uuid
 from anthropic import Anthropic
-from .models import ScriptProject
+from .models import ScriptProject, Character, Script, ScriptVersion, Scene, Job
+from .serializers import (
+    CharacterSerializer, ScriptSerializer, ScriptVersionSerializer, 
+    SceneSerializer, JobSerializer, JobCreateSerializer
+)
+from .tasks import generate_script_task, generate_scene_task
+
 
 @ensure_csrf_cookie
 def index(request):
     """Main view for the script writing interface"""
     projects = ScriptProject.objects.all()
-    return render(request, 'scriptwriter/index.html', {'projects': projects})
+    return render(request, 'scriptwriter/index_pro.html', {'projects': projects})
+
+
+# ============================================================================
+# REST API ViewSets
+# ============================================================================
+
+class CharacterViewSet(viewsets.ModelViewSet):
+    """ViewSet for managing characters"""
+    serializer_class = CharacterSerializer
+    permission_classes = [IsAuthenticated]
+    
+    def get_queryset(self):
+        return Character.objects.filter(user=self.request.user)
+
+
+class ScriptViewSet(viewsets.ModelViewSet):
+    """ViewSet for managing scripts"""
+    serializer_class = ScriptSerializer
+    permission_classes = [IsAuthenticated]
+    
+    def get_queryset(self):
+        return Script.objects.filter(user=self.request.user).prefetch_related('characters', 'versions')
+    
+    @action(detail=True, methods=['post'])
+    def create_version(self, request, pk=None):
+        """Create a new version for a script"""
+        script = self.get_object()
+        content = request.data.get('content', '')
+        notes = request.data.get('notes', '')
+        
+        latest_version = script.get_latest_version()
+        version_number = (latest_version.version_number + 1) if latest_version else 1
+        
+        version = ScriptVersion.objects.create(
+            script=script,
+            version_number=version_number,
+            content=content,
+            notes=notes
+        )
+        
+        serializer = ScriptVersionSerializer(version)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+    
+    @action(detail=True, methods=['get'])
+    def versions(self, request, pk=None):
+        """Get all versions for a script"""
+        script = self.get_object()
+        versions = script.versions.all()
+        serializer = ScriptVersionSerializer(versions, many=True)
+        return Response(serializer.data)
+
+
+class ScriptVersionViewSet(viewsets.ReadOnlyModelViewSet):
+    """ViewSet for viewing script versions"""
+    serializer_class = ScriptVersionSerializer
+    permission_classes = [IsAuthenticated]
+    
+    def get_queryset(self):
+        return ScriptVersion.objects.filter(script__user=self.request.user)
+    
+    @action(detail=True, methods=['post'])
+    def create_scene(self, request, pk=None):
+        """Create a new scene for a script version"""
+        version = self.get_object()
+        
+        scene_data = request.data.copy()
+        scene_data['script_version'] = version.id
+        
+        serializer = SceneSerializer(data=scene_data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class SceneViewSet(viewsets.ModelViewSet):
+    """ViewSet for managing scenes"""
+    serializer_class = SceneSerializer
+    permission_classes = [IsAuthenticated]
+    
+    def get_queryset(self):
+        return Scene.objects.filter(script_version__script__user=self.request.user)
+    
+    @action(detail=True, methods=['post'])
+    def regenerate(self, request, pk=None):
+        """Regenerate a scene using AI"""
+        scene = self.get_object()
+        prompt = request.data.get('prompt', 'Regenerate this scene with improvements.')
+        
+        # Create a job for scene regeneration
+        job_id = str(uuid.uuid4())
+        job = Job.objects.create(
+            user=request.user,
+            job_id=job_id,
+            job_type='scene_generation',
+            status='pending',
+            prompt=prompt,
+            scene=scene
+        )
+        
+        # Enqueue Celery task
+        generate_scene_task.delay(job_id, scene.id, prompt)
+        
+        serializer = JobSerializer(job)
+        return Response(serializer.data, status=status.HTTP_202_ACCEPTED)
+
+
+class JobViewSet(viewsets.ReadOnlyModelViewSet):
+    """ViewSet for viewing job status"""
+    serializer_class = JobSerializer
+    permission_classes = [IsAuthenticated]
+    
+    def get_queryset(self):
+        return Job.objects.filter(user=self.request.user)
+    
+    @action(detail=True, methods=['get'])
+    def status(self, request, pk=None):
+        """Get the status of a job"""
+        job = self.get_object()
+        return Response({
+            'job_id': job.job_id,
+            'status': job.status,
+            'created_at': job.created_at,
+            'started_at': job.started_at,
+            'completed_at': job.completed_at,
+        })
+    
+    @action(detail=True, methods=['get'])
+    def result(self, request, pk=None):
+        """Get the result of a completed job"""
+        job = self.get_object()
+        
+        if job.status == 'completed':
+            return Response({
+                'job_id': job.job_id,
+                'status': job.status,
+                'result': job.result,
+            })
+        elif job.status == 'failed':
+            return Response({
+                'job_id': job.job_id,
+                'status': job.status,
+                'error': job.error_message,
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        else:
+            return Response({
+                'job_id': job.job_id,
+                'status': job.status,
+                'message': 'Job not yet completed',
+            }, status=status.HTTP_202_ACCEPTED)
+
+
+# ============================================================================
+# Job Creation API
+# ============================================================================
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def create_job(request):
+    """Create a new async job for script generation"""
+    serializer = JobCreateSerializer(data=request.data)
+    
+    if not serializer.is_valid():
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+    data = serializer.validated_data
+    job_type = data['job_type']
+    prompt = data['prompt']
+    script_id = data.get('script_id')
+    scene_id = data.get('scene_id')
+    script_type = data.get('script_type', 'screenplay')
+    
+    # Create job
+    job_id = str(uuid.uuid4())
+    job = Job.objects.create(
+        user=request.user,
+        job_id=job_id,
+        job_type=job_type,
+        status='pending',
+        prompt=prompt,
+        script_id=script_id,
+        scene_id=scene_id
+    )
+    
+    # Enqueue appropriate task
+    if job_type == 'scene_generation' and scene_id:
+        generate_scene_task.delay(job_id, scene_id, prompt)
+    else:
+        generate_script_task.delay(job_id, prompt, script_id, script_type)
+    
+    return Response({
+        'job_id': job.job_id,
+        'status': job.status,
+        'message': 'Job created and queued for processing'
+    }, status=status.HTTP_202_ACCEPTED)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def job_status(request, job_id):
+    """Get the status of a job by job_id"""
+    try:
+        job = Job.objects.get(job_id=job_id, user=request.user)
+        serializer = JobSerializer(job)
+        return Response(serializer.data)
+    except Job.DoesNotExist:
+        return Response({'error': 'Job not found'}, status=status.HTTP_404_NOT_FOUND)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def job_result(request, job_id):
+    """Get the result of a completed job"""
+    try:
+        job = Job.objects.get(job_id=job_id, user=request.user)
+        
+        if job.status == 'completed':
+            return Response({
+                'job_id': job.job_id,
+                'status': job.status,
+                'result': job.result,
+            })
+        elif job.status == 'failed':
+            return Response({
+                'job_id': job.job_id,
+                'status': job.status,
+                'error': job.error_message,
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        else:
+            return Response({
+                'job_id': job.job_id,
+                'status': job.status,
+                'message': 'Job not yet completed',
+            }, status=status.HTTP_202_ACCEPTED)
+    except Job.DoesNotExist:
+        return Response({'error': 'Job not found'}, status=status.HTTP_404_NOT_FOUND)
+
+
+# ============================================================================
+# Legacy API Endpoints (for backwards compatibility)
+# ============================================================================
 
 @require_http_methods(["POST"])
 def generate_script(request):
-    """API endpoint to generate script using Claude AI"""
+    """Legacy API endpoint to generate script using Claude AI"""
     try:
         data = json.loads(request.body)
         api_key = data.get('api_key')
@@ -34,7 +287,7 @@ def generate_script(request):
         
         # Generate script using Claude
         message = client.messages.create(
-            model="claude-3-5-sonnet-20241022",
+            model="claude-opus-4-5-20251101",
             max_tokens=4096,
             system=system_prompt,
             messages=[
@@ -42,6 +295,8 @@ def generate_script(request):
             ],
             stream=False
         )
+
+        print(f"Claude response: {message}")
         
         script_content = message.content[0].text
         
@@ -55,9 +310,10 @@ def generate_script(request):
             'error': str(e)
         }, status=500)
 
+
 @require_http_methods(["POST"])
 def save_script(request):
-    """Save a script project"""
+    """Save a script project (legacy)"""
     try:
         data = json.loads(request.body)
         title = data.get('title')
@@ -80,6 +336,7 @@ def save_script(request):
         return JsonResponse({
             'error': str(e)
         }, status=500)
+
 
 def get_script_writing_system_prompt(script_type):
     """Get the system prompt for script writing based on type"""
@@ -105,7 +362,7 @@ STORYTELLING PRINCIPLES:
 - Clear character motivations and goals
 - Rising tension and conflict
 - Well-paced scenes with purpose
-- Subtext in dialogue - show don't tell
+- Subtext in dialogue - show don\'t tell
 - Visual storytelling over exposition
 - Satisfying character arcs
 - Three-act structure: Setup, Confrontation, Resolution
@@ -158,4 +415,3 @@ ACT THREE: Resolution
 
 Provide a comprehensive story outline with dramatic beats."""
 
-    return base_prompt

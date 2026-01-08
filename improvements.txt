@@ -1,0 +1,86 @@
+
+
+## 1. Async AI Generation (Core)
+
+* Add Celery + Redis
+* Move AI generation to Celery workers
+* Web requests must return immediately
+* Workers handle all long-running AI calls
+
+---
+
+## 2. Job-Based API Flow
+
+* Client submits prompt
+* Backend creates `Job`
+* Enqueue Celery task
+* Return `job_id` (HTTP 202)
+* Client polls for status/result
+
+---
+
+## 3. Job Tracking
+
+* Store job status: `pending | running | completed | failed`
+* Store generated result or error message
+* Expose:
+
+  * `GET /jobs/{id}/status`
+  * `GET /jobs/{id}/result`
+
+---
+
+## 4. Authentication & Ownership
+
+* Add basic user auth
+* All jobs, scripts, characters belong to a user
+* Enforce user-level access control
+
+---
+
+## 5. Script Storage & Versioning
+
+* Persist generated scripts
+* Support versions: v1, v2, v3
+* Each generation creates a new version
+
+---
+
+## 6. Character System
+
+* Allow users to create characters upfront
+* Store character metadata (personality, goals, voice, etc.)
+* Attach characters to jobs/scripts
+* Inject character data into AI system prompt
+
+---
+
+## 7. Scene-Based Generation
+
+* Generate scripts scene-by-scene
+* Each scene includes:
+
+  * setting
+  * goal
+  * tension
+  * tone
+* Allow regenerating individual scenes
+
+---
+
+## 8. Tone & Genre Locking
+
+* Allow selecting tone and genre per script
+* Persist tone/genre across versions
+* Enforce via system prompts
+
+---
+
+## 9. Frontend (Alpine.js)
+
+* Submit prompt → receive job_id
+* Poll job status
+* Render result when completed
+* Handle loading and failure states
+
+---
