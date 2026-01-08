@@ -27,7 +27,7 @@ if [ ! -f .env ]; then
 ANTHROPIC_API_KEY=your-api-key-here
 DJANGO_SECRET_KEY=$(python -c 'from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())')
 DJANGO_DEBUG=True
-REDIS_URL=redis://localhost:6379/0
+CELERY_BROKER_URL=redis://redis:6379/0
 EOF
     echo "✅ Created .env file. Please add your ANTHROPIC_API_KEY"
     echo "   Get your API key from: https://console.anthropic.com/"

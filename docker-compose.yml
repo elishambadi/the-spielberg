@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   postgres:
     image: postgres:15-alpine
@@ -10,10 +8,14 @@ services:
       POSTGRES_USER: spielberg
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     restart: unless-stopped
+    networks:
+      - app-network
 
   redis:
     image: redis:7-alpine
     restart: unless-stopped
+    networks:
+      - app-network
 
   app:
     build: .
@@ -25,11 +27,13 @@ services:
     environment:
       DATABASE_URL: postgresql://spielberg:${POSTGRES_PASSWORD}@postgres:5432/spielberg
       REDIS_URL: redis://redis:6379/0
-      SECRET_KEY: ${SECRET_KEY}
+      SECRET_KEY: ${DJANGO_SECRET_KEY}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
-      ALLOWED_HOSTS: spielberg.elimbadi.com,localhost
-      DEBUG: "False"
+      ALLOWED_HOSTS: hekaya.elimbadi.com, localhost
+      DEBUG: ${DJANGO_DEBUG}
     restart: unless-stopped
+    networks:
+      - app-network
 
   celery:
     build: .
@@ -40,9 +44,14 @@ services:
     environment:
       DATABASE_URL: postgresql://spielberg:${POSTGRES_PASSWORD}@postgres:5432/spielberg
       REDIS_URL: redis://redis:6379/0
-      SECRET_KEY: ${SECRET_KEY}
+      SECRET_KEY: ${DJANGO_SECRET_KEY}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
     restart: unless-stopped
+    networks:
+      - app-network
 
 volumes:
   postgres_data:
+
+networks:
+  app-network:
