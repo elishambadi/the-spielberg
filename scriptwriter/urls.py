@@ -16,11 +16,19 @@ urlpatterns = [
     # Main page
     path('', views.index, name='index'),
     
-    # REST API endpoints
-    path('api/', include(router.urls)),
+    # Health check
+    path('health/', views.health_check, name='health_check'),
+    
+    # Script viewer
+    path('viewer/', views.script_viewer, name='script_viewer'),
+    
+    # Job creation and status endpoints (must come before router to avoid conflicts)
     path('api/jobs/create/', views.create_job, name='create_job'),
     path('api/jobs/<str:job_id>/status/', views.job_status, name='job_status'),
     path('api/jobs/<str:job_id>/result/', views.job_result, name='job_result'),
+    
+    # REST API endpoints
+    path('api/', include(router.urls)),
     
     # Legacy endpoints (for backwards compatibility)
     path('api/generate/', views.generate_script, name='generate_script'),

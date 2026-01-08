@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>The Spielberg - AI Script Writer Pro</title>
+    <title>The Kaya - AI Script Writer Pro</title>
     {% load static %}
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
     <style>
@@ -326,10 +326,13 @@
 <body>
     <div class="container" x-data="appState()">
         <header>
-            <h1>🎬 The Spielberg Pro</h1>
-            <p class="tagline">Professional AI Script Writing with Async Job Processing</p>
+            <h1>🎬 The Kaya Pro</h1>
+            <p class="tagline">Professional AI Script Writing - Weave your story</p>
             <div x-show="!isAuthenticated" style="margin-top: 20px;">
-                <p style="color: #ff6666;">⚠️ Please log in to use the full features</p>
+                <p style="color: #ff6666;">⚠️ Please <a href="/admin/login/?next=/" style="color: #f9d342; text-decoration: underline;">log in</a> to use the full features</p>
+            </div>
+            <div x-show="isAuthenticated" style="margin-top: 10px;">
+                <p style="color: #66ff66; font-size: 0.9em;">✓ Logged in | <a href="/admin/logout/?next=/" style="color: #f9d342;">Logout</a></p>
             </div>
         </header>
         
@@ -353,38 +356,58 @@
         <div x-show="activeTab === 'scripts'">
             <div class="panel">
                 <h2>My Scripts</h2>
-                <div x-show="error" class="error" x-text="error"></div>
-                <div x-show="success" class="success" x-text="success"></div>
                 
-                <div class="button-group">
-                    <button @click="showCreateScriptModal = true">➕ New Script</button>
-                    <button @click="loadScripts()" class="secondary">🔄 Refresh</button>
+                <!-- Not authenticated message -->
+                <div x-show="!isAuthenticated" style="text-align: center; padding: 40px; background: rgba(255,150,0,0.1); border: 1px solid #ffa500; border-radius: 5px; margin-bottom: 20px;">
+                    <p style="color: #ffa500; font-size: 1.2em; margin-bottom: 10px;">🔒 Authentication Required</p>
+                    <p style="color: #ccc;">Please <a href="/admin/login/?next=/" style="color: #f9d342; text-decoration: underline;">log in</a> to create and manage scripts.</p>
                 </div>
                 
-                <div x-show="loading" class="loading">
-                    <div class="spinner"></div>
-                    <p>Loading scripts...</p>
-                </div>
-                
-                <div x-show="!loading && scripts.length === 0" style="text-align: center; padding: 40px; color: #666;">
-                    <p>No scripts yet. Create your first script!</p>
-                </div>
-                
-                <div x-show="!loading && scripts.length > 0" class="grid" style="margin-top: 20px;">
-                    <template x-for="script in scripts" :key="script.id">
-                        <div class="card">
-                            <h3 x-text="script.title"></h3>
-                            <p style="color: #aaa; margin-bottom: 8px;">
-                                <strong>Genre:</strong> <span x-text="script.genre"></span> | 
-                                <strong>Tone:</strong> <span x-text="script.tone"></span>
-                            </p>
-                            <p style="color: #888; font-size: 0.9em;" x-text="script.logline"></p>
-                            <div class="card-actions">
-                                <button @click="viewScript(script)">View</button>
-                                <button @click="generateVersion(script)" class="secondary">Generate</button>
+                <div x-show="isAuthenticated">
+                    <div style="background: rgba(249,211,66,0.1); border: 1px solid #f9d342; border-radius: 5px; padding: 12px; margin-bottom: 20px;">
+                        <p style="color: #f9d342; font-size: 0.9em;">
+                            ℹ️ <strong>Workflow:</strong> Create a script (metadata only) → Click "Generate" to create an AI generation job → Monitor in Jobs tab
+                        </p>
+                    </div>
+                    
+                    <!-- Debug info -->
+                    <div style="background: rgba(100,100,100,0.2); border: 1px solid #666; border-radius: 5px; padding: 10px; margin-bottom: 15px; font-size: 0.85em;">
+                        <p style="color: #aaa;">Debug: isAuthenticated=<span x-text="isAuthenticated"></span>, scripts.length=<span x-text="scripts.length"></span>, loading=<span x-text="loading"></span></p>
+                    </div>
+                    
+                    <div x-show="error" class="error" x-text="error"></div>
+                    <div x-show="success" class="success" x-text="success"></div>
+                    
+                    <div class="button-group">
+                        <button @click="showCreateScriptModal = true">➕ New Script</button>
+                        <button @click="loadScripts()" class="secondary">🔄 Refresh</button>
+                    </div>
+                    
+                    <div x-show="loading" class="loading">
+                        <div class="spinner"></div>
+                        <p>Loading scripts...</p>
+                    </div>
+                    
+                    <div x-show="!loading && scripts.length === 0" style="text-align: center; padding: 40px; color: #666;">
+                        <p>No scripts yet. Create your first script!</p>
+                    </div>
+                    
+                    <div x-show="!loading && scripts.length > 0" class="grid" style="margin-top: 20px;">
+                        <template x-for="script in scripts" :key="script.id">
+                            <div class="card">
+                                <h3 x-text="script.title"></h3>
+                                <p style="color: #aaa; margin-bottom: 8px;">
+                                    <strong>Genre:</strong> <span x-text="script.genre"></span> | 
+                                    <strong>Tone:</strong> <span x-text="script.tone"></span>
+                                </p>
+                                <p style="color: #888; font-size: 0.9em;" x-text="script.logline"></p>
+                                <div class="card-actions">
+                                    <button @click="viewScript(script)">View</button>
+                                    <button @click="generateVersion(script)" class="secondary">✨ Generate Content</button>
+                                </div>
                             </div>
-                        </div>
-                    </template>
+                        </template>
+                    </div>
                 </div>
             </div>
         </div>
@@ -432,36 +455,45 @@
         <div x-show="activeTab === 'jobs'">
             <div class="panel">
                 <h2>Recent Jobs</h2>
-                <button @click="loadJobs()" class="secondary">🔄 Refresh</button>
                 
-                <div x-show="loading" class="loading">
-                    <div class="spinner"></div>
-                    <p>Loading jobs...</p>
+                <!-- Not authenticated message -->
+                <div x-show="!isAuthenticated" style="text-align: center; padding: 40px; background: rgba(255,150,0,0.1); border: 1px solid #ffa500; border-radius: 5px; margin-bottom: 20px;">
+                    <p style="color: #ffa500; font-size: 1.2em; margin-bottom: 10px;">🔒 Authentication Required</p>
+                    <p style="color: #ccc;">Please <a href="/admin/login/?next=/" style="color: #f9d342; text-decoration: underline;">log in</a> to view job status.</p>
                 </div>
                 
-                <div x-show="!loading && jobs.length === 0" style="text-align: center; padding: 40px; color: #666;">
-                    <p>No jobs yet.</p>
-                </div>
-                
-                <div x-show="!loading && jobs.length > 0" style="margin-top: 20px;">
-                    <template x-for="job in jobs" :key="job.id">
-                        <div class="scene-item">
-                            <div style="display: flex; justify-content: space-between; align-items: center;">
-                                <div>
-                                    <h4>Job #<span x-text="job.job_id.substring(0, 8)"></span></h4>
-                                    <p style="color: #aaa; font-size: 0.9em;" x-text="job.job_type"></p>
+                <div x-show="isAuthenticated">
+                    <button @click="loadJobs()" class="secondary">🔄 Refresh</button>
+                    
+                    <div x-show="loading" class="loading">
+                        <div class="spinner"></div>
+                        <p>Loading jobs...</p>
+                    </div>
+                    
+                    <div x-show="!loading && jobs.length === 0" style="text-align: center; padding: 40px; color: #666;">
+                        <p>No jobs yet.</p>
+                    </div>
+                    
+                    <div x-show="!loading && jobs.length > 0" style="margin-top: 20px;">
+                        <template x-for="job in jobs" :key="job.id">
+                            <div class="scene-item">
+                                <div style="display: flex; justify-content: space-between; align-items: center;">
+                                    <div>
+                                        <h4>Job #<span x-text="job.job_id.substring(0, 8)"></span></h4>
+                                        <p style="color: #aaa; font-size: 0.9em;" x-text="job.job_type"></p>
+                                    </div>
+                                    <span class="status-badge" :class="'status-' + job.status" x-text="job.status"></span>
                                 </div>
-                                <span class="status-badge" :class="'status-' + job.status" x-text="job.status"></span>
+                                <p style="color: #888; margin-top: 10px;" x-text="job.prompt.substring(0, 100) + '...'"></p>
+                                <template x-if="job.status === 'completed' && job.result">
+                                    <button @click="viewJobResult(job)" style="margin-top: 10px;">View Result</button>
+                                </template>
+                                <template x-if="job.status === 'failed'">
+                                    <p style="color: #ff6666; margin-top: 10px;" x-text="job.error_message"></p>
+                                </template>
                             </div>
-                            <p style="color: #888; margin-top: 10px;" x-text="job.prompt.substring(0, 100) + '...'"></p>
-                            <template x-if="job.status === 'completed' && job.result">
-                                <button @click="viewJobResult(job)" style="margin-top: 10px;">View Result</button>
-                            </template>
-                            <template x-if="job.status === 'failed'">
-                                <p style="color: #ff6666; margin-top: 10px;" x-text="job.error_message"></p>
-                            </template>
-                        </div>
-                    </template>
+                        </template>
+                    </div>
                 </div>
             </div>
         </div>
@@ -624,7 +656,7 @@
         function appState() {
             return {
                 activeTab: 'scripts',
-                isAuthenticated: true, // Check with server
+                isAuthenticated: false,
                 loading: false,
                 error: '',
                 success: '',
@@ -650,9 +682,29 @@
                 legacyLoading: false,
                 
                 init() {
-                    this.loadScripts();
-                    this.loadCharacters();
-                    this.loadJobs();
+                    this.checkAuth();
+                },
+                
+                async checkAuth() {
+                    try {
+                        // Try to fetch scripts - if it works, we're authenticated
+                        await this.loadScripts();
+                        this.isAuthenticated = true;
+                        // Load other resources after we know we're authenticated
+                        await this.loadCharacters();
+                        await this.loadJobs();
+                    } catch (err) {
+                        // If we get a 403/401, user is not authenticated
+                        if (err.message.includes('403') || err.message.includes('401')) {
+                            this.isAuthenticated = false;
+                            this.scripts = [];
+                            this.characters = [];
+                            this.jobs = [];
+                            this.error = '';
+                        } else {
+                            this.error = 'Error loading data: ' + err.message;
+                        }
+                    }
                 },
                 
                 async request(url, options = {}) {
@@ -674,9 +726,16 @@
                     try {
                         this.loading = true;
                         this.error = '';
-                        this.scripts = await this.request('/api/scripts/');
+                        const response = await this.request('/api/scripts/');
+                        this.scripts = Array.isArray(response.results) ? response.results : [];
+                        console.log('Loaded scripts:', this.scripts.length, this.scripts);
                     } catch (err) {
-                        this.error = 'Failed to load scripts: ' + err.message;
+                        // Don't show error if it's an auth issue - handled by checkAuth
+                        if (!err.message.includes('403') && !err.message.includes('401')) {
+                            this.error = 'Failed to load scripts: ' + err.message;
+                        }
+                        this.scripts = [];
+                        throw err; // Re-throw for checkAuth to catch
                     } finally {
                         this.loading = false;
                     }
@@ -698,7 +757,8 @@
                     try {
                         this.loading = true;
                         this.error = '';
-                        this.jobs = await this.request('/api/jobs/');
+                        result = await this.request('/api/jobs/');
+                        this.jobs = Array.isArray(result.results) ? result.results : [];
                     } catch (err) {
                         this.error = 'Failed to load jobs: ' + err.message;
                     } finally {
@@ -755,25 +815,27 @@
                 },
                 
                 async generateVersion(script) {
-                    const prompt = prompt('Enter generation prompt for this script:');
-                    if (!prompt) return;
+                    const userPrompt = window.prompt('Enter generation prompt for this script:\n\nExample: "Write Act 1 following the three-act structure. Include strong character introductions and establish the central conflict."');
+                    if (!userPrompt) return;
                     
                     try {
                         this.error = '';
                         const data = await this.request('/api/jobs/create/', {
                             method: 'POST',
                             body: JSON.stringify({
-                                prompt: prompt,
+                                prompt: userPrompt,
                                 job_type: 'script_generation',
                                 script_id: script.id,
                                 script_type: 'screenplay'
                             })
                         });
-                        this.success = 'Job created! ID: ' + data.job_id;
-                        this.activeTab = 'jobs';
+                        this.success = '✅ Job created! Switching to Jobs tab to monitor progress...';
+                        setTimeout(() => {
+                            this.activeTab = 'jobs';
+                            this.success = '';
+                        }, 2000);
                         this.loadJobs();
                         this.pollJob(data.job_id);
-                        setTimeout(() => this.success = '', 5000);
                     } catch (err) {
                         this.error = 'Failed to create job: ' + err.message;
                     }
@@ -813,7 +875,7 @@
                 },
                 
                 viewJobResult(job) {
-                    alert('Job Result:\n\n' + job.result.substring(0, 500) + '...');
+                    window.open(`/viewer/?job_id=${job.job_id}`, '_blank');
                 },
                 
                 editCharacter(character) {

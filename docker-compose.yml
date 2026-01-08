@@ -1,0 +1,48 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    environment:
+      POSTGRES_DB: spielberg
+      POSTGRES_USER: spielberg
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+
+  app:
+    build: .
+    ports:
+      - "8000:8000"
+    depends_on:
+      - postgres
+      - redis
+    environment:
+      DATABASE_URL: postgresql://spielberg:${POSTGRES_PASSWORD}@postgres:5432/spielberg
+      REDIS_URL: redis://redis:6379/0
+      SECRET_KEY: ${SECRET_KEY}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      ALLOWED_HOSTS: spielberg.elimbadi.com,localhost
+      DEBUG: "False"
+    restart: unless-stopped
+
+  celery:
+    build: .
+    command: celery -A spielberg_project worker --loglevel=info
+    depends_on:
+      - postgres
+      - redis
+    environment:
+      DATABASE_URL: postgresql://spielberg:${POSTGRES_PASSWORD}@postgres:5432/spielberg
+      REDIS_URL: redis://redis:6379/0
+      SECRET_KEY: ${SECRET_KEY}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+    restart: unless-stopped
+
+volumes:
+  postgres_data:

@@ -1,53 +1,43 @@
 # The Spielberg 🎬
 
-An AI-powered script writing web application that helps screenwriters create professional scripts using Claude AI. Built with Django and Alpine.js, it applies fundamental principles of screenplay writing and formatting.
+An AI-powered script writing web application that helps screenwriters create professional scripts using Claude AI. Built with Django, Django REST Framework, Celery, and Alpine.js.
 
-## Features
+## ✨ Features
 
-- 🤖 **AI-Powered Script Generation**: Uses Claude AI (Anthropic) to generate professional scripts
-- 📝 **Multiple Script Formats**:
-  - **Screenplay**: Full professional screenplay format with scene headings, action lines, and dialogue
-  - **Treatment**: Narrative prose description of your story
-  - **Outline**: Structured breakdown with acts, sequences, and story beats
-- 💾 **Save & Manage Scripts**: Store your generated scripts in a database
-- 🎨 **Beautiful UI**: Modern, cinematic interface with Alpine.js reactivity
-- 📋 **Copy to Clipboard**: Easy script sharing and export
-- 🎭 **Script Writing Principles**: Built-in system prompts that follow industry-standard screenplay formatting and storytelling principles
+### Core Functionality
+- 🤖 **AI-Powered Script Generation**: Uses Claude Opus 4 (Anthropic) with async job processing
+- 📝 **Multiple Script Formats**: Screenplay, Treatment, Outline
+- 💾 **Script Management**: CRUD operations with versioning support
+- 🎭 **Character Management**: Create and manage character profiles
+- 🎬 **Scene-by-Scene Generation**: Generate individual scenes with context
+- 📊 **Job Monitoring**: Track AI generation progress in real-time
+- 🔐 **Authentication**: User-based access control with session auth
+- 🎨 **Modern UI**: Alpine.js-powered reactive interface with tabs
+- 📖 **Script Viewer**: Beautiful formatted script reader with markdown parsing
 
-## Script Writing Principles Included
+### Technical Features
+- ⚡ **Async Task Processing**: Celery workers for background AI generation
+- 🔄 **RESTful API**: Django REST Framework with pagination
+- 📦 **Version Control**: Track script versions and changes
+- 🎯 **Tone & Genre Locking**: Control script style and mood
+- 🚀 **Production Ready**: Docker deployment with PostgreSQL, Redis, Nginx
 
-The application incorporates professional screenwriting principles:
+## 🚀 Quick Start
 
-### Screenplay Format
-- Proper scene headings (INT./EXT. LOCATION - TIME)
-- Action lines in present tense
-- Character introductions and dialogue formatting
-- Parentheticals for actor direction
-- Standard transitions (FADE IN, CUT TO, etc.)
+### Docker Deployment (Recommended for Production)
 
-### Storytelling Structure
-- Three-act structure (Setup, Confrontation, Resolution)
-- Character arcs and development
-- Visual storytelling over exposition
-- Subtext in dialogue
-- Rising tension and conflict
-- Strong opening hooks
-- Satisfying resolutions
-
-## Installation
-
-### Prerequisites
-- Python 3.8 or higher
-- pip (Python package manager)
-- Claude API key from [Anthropic Console](https://console.anthropic.com/)
-
-### Setup
-
-1. Clone the repository:
 ```bash
+# Clone repository
 git clone https://github.com/elishambadi/the-spielberg.git
 cd the-spielberg
+
+# Run automated deployment
+./deploy.sh
 ```
+
+For detailed deployment instructions, see [DOCKER_DEPLOYMENT.md](DOCKER_DEPLOYMENT.md)
+
+### Local Development
 
 2. Install dependencies:
 ```bash

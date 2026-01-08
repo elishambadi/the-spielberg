@@ -25,6 +25,16 @@ def index(request):
     return render(request, 'scriptwriter/index_pro.html', {'projects': projects})
 
 
+def script_viewer(request):
+    """View for displaying scripts in a formatted reader"""
+    return render(request, 'scriptwriter/script_viewer.html')
+
+
+def health_check(request):
+    """Health check endpoint for monitoring"""
+    return JsonResponse({'status': 'healthy', 'service': 'spielberg'})
+
+
 # ============================================================================
 # REST API ViewSets
 # ============================================================================
@@ -244,6 +254,7 @@ def job_result(request, job_id):
                 'job_id': job.job_id,
                 'status': job.status,
                 'result': job.result,
+                'script': job.script.id if job.script else None,
             })
         elif job.status == 'failed':
             return Response({
