@@ -160,12 +160,13 @@ def generate_script_task(self, job_id, prompt, script_id=None, script_type='scre
         )
         
         # Generate script using Claude
+        full_prompt = f"{script.logline}\n\n{prompt}"
         message = client.messages.create(
             model="claude-opus-4-5-20251101",
             max_tokens=4096,
             system=system_prompt,
             messages=[
-                {"role": "user", "content": prompt}
+                {"role": "user", "content": full_prompt}
             ],
             stream=False
         )
