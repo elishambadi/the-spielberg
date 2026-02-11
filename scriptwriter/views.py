@@ -3,6 +3,7 @@ from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
 from django.views.decorators.csrf import ensure_csrf_cookie
 from django.contrib.auth.decorators import login_required
+from django.contrib.auth import authenticate, login, logout
 from rest_framework import viewsets, status
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.response import Response
@@ -13,7 +14,8 @@ from anthropic import Anthropic
 from .models import ScriptProject, Character, Script, ScriptVersion, Scene, Job
 from .serializers import (
     CharacterSerializer, ScriptSerializer, ScriptVersionSerializer, 
-    SceneSerializer, JobSerializer, JobCreateSerializer
+    SceneSerializer, JobSerializer, JobCreateSerializer,
+    UserRegisterSerializer, UserLoginSerializer, UserSerializer
 )
 from .tasks import generate_script_task, generate_scene_task
 
@@ -425,4 +427,70 @@ ACT THREE: Resolution
 - Closing Image
 
 Provide a comprehensive story outline with dramatic beats."""
+
+
+# ============================================================================
+# Authentication Views
+# ============================================================================
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def register_user(request):
+    """Register a new user"""
+    serializer = UserRegisterSerializer(data=request.data)
+    if serializer.is_valid():
+        user = serializer.save()
+        login(request, user)
+        return Response({
+            'message': 'User registered successfully',
+            'user': UserSerializer(user).data
+        }, status=status.HTTP_201_CREATED)
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def login_user(request):
+    """Login user"""
+    serializer = UserLoginSerializer(data=request.data)
+    if serializer.is_valid():
+        username = serializer.validated_data['username']
+        password = serializer.validated_data['password']
+        user = authenticate(request, username=username, password=password)
+        
+        if user is not None:
+            login(request, user)
+            return Response({
+                'message': 'Login successful',
+                'user': UserSerializer(user).data
+            }, status=status.HTTP_200_OK)
+        else:
+            return Response({
+                'error': 'Invalid username or password'
+            }, status=status.HTTP_401_UNAUTHORIZED)
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def logout_user(request):
+    """Logout user"""
+    logout(request)
+    return Response({
+        'message': 'Logout successful'
+    }, status=status.HTTP_200_OK)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_current_user(request):
+    """Get current authenticated user"""
+    return Response({
+        'user': UserSerializer(request.user).data
+    }, status=status.HTTP_200_OK)
+
+
+def auth_page(request):
+    """View for login/register page"""
+    return render(request, 'scriptwriter/auth.html')
 

@@ -16,6 +16,13 @@ urlpatterns = [
     # Main page
     path('', views.index, name='index'),
     
+    # Authentication
+    path('auth/', views.auth_page, name='auth_page'),
+    path('api/auth/register/', views.register_user, name='register'),
+    path('api/auth/login/', views.login_user, name='login'),
+    path('api/auth/logout/', views.logout_user, name='logout'),
+    path('api/auth/user/', views.get_current_user, name='current_user'),
+    
     # Health check
     path('health/', views.health_check, name='health_check'),
     

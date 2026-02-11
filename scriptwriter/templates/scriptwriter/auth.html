@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login / Register - The Kaya</title>
+    {% load static %}
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Courier New', monospace;
+            background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
+            color: #e0e0e0;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        
+        .auth-container {
+            max-width: 450px;
+            width: 100%;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid #444;
+            border-radius: 15px;
+            padding: 40px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+        }
+        
+        .logo {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+        
+        h1 {
+            font-size: 2.5em;
+            color: #f9d342;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+            margin-bottom: 10px;
+        }
+        
+        .tagline {
+            font-size: 1em;
+            color: #aaa;
+            font-style: italic;
+        }
+        
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 30px;
+            border-bottom: 2px solid #444;
+        }
+        
+        .tab {
+            flex: 1;
+            padding: 12px;
+            background: rgba(255,255,255,0.05);
+            border: none;
+            border-bottom: 3px solid transparent;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            color: #aaa;
+            font-size: 1.1em;
+            font-weight: bold;
+        }
+        
+        .tab.active {
+            color: #f9d342;
+            border-bottom-color: #f9d342;
+            background: rgba(249,211,66,0.1);
+        }
+        
+        .tab:hover {
+            background: rgba(255,255,255,0.1);
+        }
+        
+        .form-container {
+            display: none;
+        }
+        
+        .form-container.active {
+            display: block;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #ccc;
+            font-weight: bold;
+            font-size: 0.95em;
+        }
+        
+        input[type="text"],
+        input[type="email"],
+        input[type="password"] {
+            width: 100%;
+            padding: 12px;
+            background: rgba(0,0,0,0.3);
+            border: 1px solid #444;
+            border-radius: 5px;
+            color: #fff;
+            font-size: 1em;
+            font-family: 'Courier New', monospace;
+            transition: all 0.3s ease;
+        }
+        
+        input[type="text"]:focus,
+        input[type="email"]:focus,
+        input[type="password"]:focus {
+            outline: none;
+            border-color: #f9d342;
+            background: rgba(0,0,0,0.5);
+        }
+        
+        .submit-btn {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, #f9d342 0%, #e6c035 100%);
+            border: none;
+            border-radius: 5px;
+            color: #1a1a1a;
+            font-size: 1.1em;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-family: 'Courier New', monospace;
+        }
+        
+        .submit-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(249,211,66,0.3);
+        }
+        
+        .submit-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .error-message {
+            background: rgba(220,53,69,0.2);
+            border: 1px solid #dc3545;
+            border-radius: 5px;
+            padding: 12px;
+            margin-bottom: 20px;
+            color: #ff6b6b;
+        }
+        
+        .success-message {
+            background: rgba(40,167,69,0.2);
+            border: 1px solid #28a745;
+            border-radius: 5px;
+            padding: 12px;
+            margin-bottom: 20px;
+            color: #6bff6b;
+        }
+        
+        .info-text {
+            text-align: center;
+            color: #aaa;
+            font-size: 0.9em;
+            margin-top: 20px;
+        }
+        
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            border-top-color: #f9d342;
+            animation: spin 1s ease-in-out infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="auth-container" x-data="authApp()">
+        <div class="logo">
+            <h1>The Kaya</h1>
+            <p class="tagline">AI Script Writer Pro</p>
+        </div>
+        
+        <div class="tabs">
+            <button class="tab" :class="{ 'active': activeTab === 'login' }" @click="activeTab = 'login'">
+                Login
+            </button>
+            <button class="tab" :class="{ 'active': activeTab === 'register' }" @click="activeTab = 'register'">
+                Register
+            </button>
+        </div>
+        
+        <!-- Error/Success Messages -->
+        <div x-show="errorMessage" class="error-message" x-text="errorMessage"></div>
+        <div x-show="successMessage" class="success-message" x-text="successMessage"></div>
+        
+        <!-- Login Form -->
+        <div class="form-container" :class="{ 'active': activeTab === 'login' }">
+            <form @submit.prevent="handleLogin">
+                <div class="form-group">
+                    <label for="login-username">Username</label>
+                    <input 
+                        type="text" 
+                        id="login-username" 
+                        x-model="loginForm.username"
+                        required
+                        autocomplete="username"
+                    >
+                </div>
+                
+                <div class="form-group">
+                    <label for="login-password">Password</label>
+                    <input 
+                        type="password" 
+                        id="login-password" 
+                        x-model="loginForm.password"
+                        required
+                        autocomplete="current-password"
+                    >
+                </div>
+                
+                <button type="submit" class="submit-btn" :disabled="loading">
+                    <span x-show="!loading">Login</span>
+                    <span x-show="loading" class="loading"></span>
+                </button>
+            </form>
+        </div>
+        
+        <!-- Register Form -->
+        <div class="form-container" :class="{ 'active': activeTab === 'register' }">
+            <form @submit.prevent="handleRegister">
+                <div class="form-group">
+                    <label for="register-username">Username</label>
+                    <input 
+                        type="text" 
+                        id="register-username" 
+                        x-model="registerForm.username"
+                        required
+                        autocomplete="username"
+                    >
+                </div>
+                
+                <div class="form-group">
+                    <label for="register-email">Email</label>
+                    <input 
+                        type="email" 
+                        id="register-email" 
+                        x-model="registerForm.email"
+                        required
+                        autocomplete="email"
+                    >
+                </div>
+                
+                <div class="form-group">
+                    <label for="register-password">Password</label>
+                    <input 
+                        type="password" 
+                        id="register-password" 
+                        x-model="registerForm.password"
+                        required
+                        minlength="8"
+                        autocomplete="new-password"
+                    >
+                </div>
+                
+                <div class="form-group">
+                    <label for="register-password-confirm">Confirm Password</label>
+                    <input 
+                        type="password" 
+                        id="register-password-confirm" 
+                        x-model="registerForm.password_confirm"
+                        required
+                        minlength="8"
+                        autocomplete="new-password"
+                    >
+                </div>
+                
+                <button type="submit" class="submit-btn" :disabled="loading">
+                    <span x-show="!loading">Register</span>
+                    <span x-show="loading" class="loading"></span>
+                </button>
+            </form>
+        </div>
+        
+        <p class="info-text">
+            Secure authentication.
+        </p>
+    </div>
+
+    <script>
+        function authApp() {
+            return {
+                activeTab: 'login',
+                loading: false,
+                errorMessage: '',
+                successMessage: '',
+                loginForm: {
+                    username: '',
+                    password: ''
+                },
+                registerForm: {
+                    username: '',
+                    email: '',
+                    password: '',
+                    password_confirm: ''
+                },
+                
+                async handleLogin() {
+                    this.loading = true;
+                    this.errorMessage = '';
+                    this.successMessage = '';
+                    
+                    try {
+                        const response = await fetch('/api/auth/login/', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRFToken': this.getCookie('csrftoken')
+                            },
+                            body: JSON.stringify(this.loginForm)
+                        });
+                        
+                        const data = await response.json();
+                        
+                        if (response.ok) {
+                            this.successMessage = 'Login successful! Redirecting...';
+                            setTimeout(() => {
+                                window.location.href = '/';
+                            }, 1000);
+                        } else {
+                            this.errorMessage = data.error || 'Login failed. Please check your credentials.';
+                        }
+                    } catch (error) {
+                        this.errorMessage = 'An error occurred. Please try again.';
+                        console.error('Login error:', error);
+                    } finally {
+                        this.loading = false;
+                    }
+                },
+                
+                async handleRegister() {
+                    this.loading = true;
+                    this.errorMessage = '';
+                    this.successMessage = '';
+                    
+                    if (this.registerForm.password !== this.registerForm.password_confirm) {
+                        this.errorMessage = 'Passwords do not match.';
+                        this.loading = false;
+                        return;
+                    }
+                    
+                    try {
+                        const response = await fetch('/api/auth/register/', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRFToken': this.getCookie('csrftoken')
+                            },
+                            body: JSON.stringify(this.registerForm)
+                        });
+                        
+                        const data = await response.json();
+                        
+                        if (response.ok) {
+                            this.successMessage = 'Registration successful! Redirecting...';
+                            setTimeout(() => {
+                                window.location.href = '/';
+                            }, 1000);
+                        } else {
+                            // Handle validation errors
+                            if (data.username) {
+                                this.errorMessage = 'Username: ' + data.username[0];
+                            } else if (data.email) {
+                                this.errorMessage = 'Email: ' + data.email[0];
+                            } else if (data.password) {
+                                this.errorMessage = 'Password: ' + data.password[0];
+                            } else if (data.password_confirm) {
+                                this.errorMessage = data.password_confirm[0];
+                            } else {
+                                this.errorMessage = 'Registration failed. Please check your information.';
+                            }
+                        }
+                    } catch (error) {
+                        this.errorMessage = 'An error occurred. Please try again.';
+                        console.error('Registration error:', error);
+                    } finally {
+                        this.loading = false;
+                    }
+                },
+                
+                getCookie(name) {
+                    let cookieValue = null;
+                    if (document.cookie && document.cookie !== '') {
+                        const cookies = document.cookie.split(';');
+                        for (let i = 0; i < cookies.length; i++) {
+                            const cookie = cookies[i].trim();
+                            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                                break;
+                            }
+                        }
+                    }
+                    return cookieValue;
+                }
+            }
+        }
+    </script>
+</body>
+</html>

@@ -185,6 +185,12 @@ REST_FRAMEWORK = {
     'PAGE_SIZE': 20,
 }
 
+# Session Configuration
+SESSION_COOKIE_AGE = 1209600  # 2 weeks in seconds
+SESSION_COOKIE_HTTPONLY = True
+SESSION_COOKIE_SAMESITE = 'Lax'
+SESSION_SAVE_EVERY_REQUEST = False
+
 # Cache Configuration
 REDIS_URL = os.environ.get('REDIS_URL', 'redis://127.0.0.1:6379/1')
 CACHES = {
