@@ -29,13 +29,13 @@ SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-ddhv81qg8u71rtfn67&lh
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.environ.get('DEBUG', 'True') == 'True'
 
-ALLOWED_HOSTS = [host.strip() for host in os.environ.get('ALLOWED_HOSTS', 'localhost, 127.0.0.1').split(',')]
+ALLOWED_HOSTS = [host.strip() for host in os.environ.get('ALLOWED_HOSTS', 'localhost, 127.0.0.1, hekaya.elimbadi.com').split(',')]
 print("Allowed Hosts:", ALLOWED_HOSTS)
 
 # CSRF Configuration
 CSRF_COOKIE_HTTPONLY = False  # Allow JavaScript to read CSRF token
 CSRF_USE_SESSIONS = False
-CSRF_TRUSTED_ORIGINS = [origin.strip() for origin in os.environ.get('CSRF_TRUSTED_ORIGINS', 'http://localhost:8000, http://127.0.0.1:8000').split(',')]
+CSRF_TRUSTED_ORIGINS = [origin.strip() for origin in os.environ.get('CSRF_TRUSTED_ORIGINS', 'http://localhost:8000, http://127.0.0.1:8000, https://hekaya.elimbadi.com').split(',')]
 
 # Application definition
 
