@@ -285,6 +285,7 @@
         .status-running { background: rgba(0,150,255,0.2); color: #0096ff; }
         .status-completed { background: rgba(0,255,0,0.2); color: #00ff00; }
         .status-failed { background: rgba(255,0,0,0.2); color: #ff0000; }
+        .status-continued { background: rgba(255,215,0,0.2); color: #ffd700; }
         
         .scene-list {
             display: flex;
@@ -517,12 +518,22 @@
                             <div class="scene-item">
                                 <div style="display: flex; justify-content: space-between; align-items: center;">
                                     <div>
-                                        <h4>Job #<span x-text="job.job_id.substring(0, 8)"></span></h4>
+                                        <h4>
+                                            Job #<span x-text="job.job_id.substring(0, 8)"></span>
+                                            <template x-if="job.is_continuation">
+                                                <span style="color: #ffa500; font-size: 0.8em;"> (Continuation #<span x-text="job.continuation_count"></span>)</span>
+                                            </template>
+                                        </h4>
                                         <p style="color: #aaa; font-size: 0.9em;" x-text="job.job_type"></p>
                                     </div>
                                     <span class="status-badge" :class="'status-' + job.status" x-text="job.status"></span>
                                 </div>
                                 <p style="color: #888; margin-top: 10px;" x-text="job.prompt.substring(0, 100) + '...'"></p>
+                                <template x-if="job.is_continuation && job.parent_job">
+                                    <p style="color: #ffa500; font-size: 0.85em; margin-top: 5px;">
+                                        ↳ Auto-continuing from incomplete generation
+                                    </p>
+                                </template>
                                 <template x-if="job.status === 'completed' && job.result">
                                     <button @click="viewJobResult(job)" style="margin-top: 10px;">View Result</button>
                                 </template>

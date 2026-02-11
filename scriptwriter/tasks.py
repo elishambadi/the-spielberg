@@ -5,7 +5,57 @@ from celery import shared_task
 from django.utils import timezone
 from anthropic import Anthropic
 import os
+import re
+import uuid
 from .models import Job, Script, ScriptVersion, Scene, Character
+
+
+def detect_incomplete_content(content):
+    """
+    Detect if content was cut off mid-generation.
+    Returns True if content appears incomplete.
+    """
+    if not content:
+        return False
+    
+    content = content.strip()
+    
+    # Check for common cutoff indicators
+    indicators = [
+        # Cut off mid-sentence
+        not content.endswith(('.', '!', '?', '"', ')', ']', 'OUT.', 'FADE OUT.', 'THE END')),
+        # Cut off mid-dialogue
+        content.count('"') % 2 != 0,  # Odd number of quotes
+        # Cut off mid-action line
+        content.endswith(('that', 'and', ' but', ' the', ' a', ' an', ' is', ' are', ' was', ' were', 'if', 'then', 'when', 'while', 'because', 'as', 'so', 'after', 'before', 'until', 'although', 'though', 'unless', 'whereas')),
+        # Cut off mid-scene heading
+        bool(re.search(r'(INT\.|EXT\.)(?!\s+\w+\s+-\s+\w+)', content[-100:])),
+        # Ends with incomplete character name (caps line without dialogue)
+        bool(re.search(r'\n[A-Z\s]{3,}\n*$', content[-50:])),
+    ]
+    
+    return any(indicators)
+
+
+def combine_content_parts(previous_content, new_content):
+    """
+    Intelligently combine continuation with previous content.
+    """
+    if not previous_content:
+        return new_content
+    
+    # Remove common continuation artifacts
+    new_content = new_content.strip()
+    
+    # If new content starts with a repeat of the last line, remove it
+    last_lines = previous_content.strip().split('\n')[-3:]
+    for i, line in enumerate(last_lines):
+        if new_content.startswith(line.strip()):
+            # Found a repeat, skip past it
+            new_content = '\n'.join(new_content.split('\n')[1:])
+            break
+    
+    return previous_content + "\n" + new_content
 
 
 def get_script_writing_system_prompt(script_type='screenplay', genre='', tone='', characters=None):
@@ -121,9 +171,10 @@ Provide a comprehensive story outline with dramatic beats."""
 
 
 @shared_task(bind=True)
-def generate_script_task(self, job_id, prompt, script_id=None, script_type='screenplay'):
+def generate_script_task(self, job_id, prompt, script_id=None, script_type='screenplay', continuation_of=None):
     """
     Async task to generate a script using Claude AI.
+    Supports automatic continuation if content is cut off.
     """
     try:
         job = Job.objects.get(job_id=job_id)
@@ -143,6 +194,16 @@ def generate_script_task(self, job_id, prompt, script_id=None, script_type='scre
             genre = script.get_genre_display()
             tone = script.get_tone_display()
         
+        # Handle continuation
+        previous_content = ""
+        if continuation_of:
+            parent_job = Job.objects.get(job_id=continuation_of)
+            previous_content = parent_job.result
+            job.is_continuation = True
+            job.parent_job = parent_job
+            job.continuation_count = parent_job.continuation_count + 1
+            job.save()
+        
         # Get API key from environment
         api_key = os.environ.get('ANTHROPIC_API_KEY')
         if not api_key:
@@ -159,11 +220,30 @@ def generate_script_task(self, job_id, prompt, script_id=None, script_type='scre
             characters=characters
         )
         
+        # Build prompt based on whether this is a continuation
+        if continuation_of:
+            # For continuations, provide context and ask to continue
+            last_500_chars = previous_content[-500:] if len(previous_content) > 500 else previous_content
+            full_prompt = f"""CONTINUATION REQUEST:
+
+The story so far (last 500 characters):
+\"\"\"
+{last_500_chars}
+\"\"\"
+
+Continue from exactly where it left off. Do not repeat what was already written. Pick up mid-sentence if necessary and continue the story naturally. Complete the section requested in the original prompt:
+
+{prompt}
+
+IMPORTANT: Continue seamlessly from where it stopped. Finish the current scene/act properly."""
+        else:
+            # Original generation
+            full_prompt = f"{script.logline}\n\n{prompt}\n\nIMPORTANT: Ensure you complete the entire section/act requested. If approaching token limits, prioritize finishing the current scene or beat properly rather than cutting off mid-dialogue or mid-action."
+        
         # Generate script using Claude
-        full_prompt = f"{script.logline}\n\n{prompt}"
         message = client.messages.create(
             model="claude-opus-4-5-20251101",
-            max_tokens=4096,
+            max_tokens=8192,
             system=system_prompt,
             messages=[
                 {"role": "user", "content": full_prompt}
@@ -173,14 +253,56 @@ def generate_script_task(self, job_id, prompt, script_id=None, script_type='scre
         
         script_content = message.content[0].text
         
+        # Combine with previous content if continuation
+        if continuation_of:
+            script_content = combine_content_parts(previous_content, script_content)
+        
+        # Check if content is still incomplete (max 3 continuations)
+        if detect_incomplete_content(script_content) and job.continuation_count < 3:
+            # Save current progress
+            job.status = 'completed'
+            job.result = script_content
+            job.completed_at = timezone.now()
+            job.save()
+            
+            # Automatically create continuation job
+            continuation_job_id = str(uuid.uuid4())
+            continuation_job = Job.objects.create(
+                user=job.user,
+                job_id=continuation_job_id,
+                job_type=job.job_type,
+                status='pending',
+                prompt=prompt,
+                script_id=script_id,
+                scene_id=job.scene_id,
+                is_continuation=True,
+                parent_job=job,
+                continuation_count=job.continuation_count + 1
+            )
+            
+            # Enqueue continuation task
+            generate_script_task.delay(
+                continuation_job_id, 
+                prompt, 
+                script_id, 
+                script_type, 
+                continuation_of=job_id
+            )
+            
+            return {
+                'status': 'continued',
+                'result': script_content,
+                'continuation_job_id': continuation_job_id
+            }
+        
         # Update job with result
         job.status = 'completed'
         job.result = script_content
         job.completed_at = timezone.now()
         job.save()
         
-        # If script is provided, create a new version
-        if script:
+        # If script is provided, create a new version (only for original job, not continuations)
+        if script and not continuation_of:
             latest_version = script.get_latest_version()
             version_number = (latest_version.version_number + 1) if latest_version else 1
             
@@ -189,6 +311,12 @@ def generate_script_task(self, job_id, prompt, script_id=None, script_type='scre
                 version_number=version_number,
                 content=script_content
             )
+        elif script and continuation_of:
+            # Update the existing version with the complete content
+            latest_version = script.get_latest_version()
+            if latest_version:
+                latest_version.content = script_content
+                latest_version.save()
         
         return {'status': 'completed', 'result': script_content}
         
@@ -239,7 +367,7 @@ Tension: {scene.tension}
         if scene.tone:
             scene_context += f"Tone: {scene.tone}\n"
         
-        full_prompt = scene_context + "\n\n" + prompt
+        full_prompt = scene_context + "\n\n" + prompt + "\n\nIMPORTANT: Complete the entire scene properly with a clear beginning, middle, and end. Do not cut off mid-dialogue."
         
         # System prompt for scene writing
         system_prompt = get_script_writing_system_prompt(
@@ -252,7 +380,7 @@ Tension: {scene.tension}
         # Generate scene using Claude
         message = client.messages.create(
             model="claude-opus-4-5-20251101",
-            max_tokens=2048,
+            max_tokens=4096,  # Scenes are shorter, 4096 should be sufficient
             system=system_prompt,
             messages=[
                 {"role": "user", "content": full_prompt}

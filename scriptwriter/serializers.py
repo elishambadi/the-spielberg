@@ -92,8 +92,10 @@ class JobSerializer(serializers.ModelSerializer):
     class Meta:
         model = Job
         fields = ['id', 'user', 'job_id', 'job_type', 'status', 'prompt', 'script', 'scene', 
-                  'result', 'error_message', 'created_at', 'started_at', 'completed_at']
+                  'result', 'error_message', 'is_continuation', 'parent_job', 'continuation_count',
+                  'created_at', 'started_at', 'completed_at']
         read_only_fields = ['id', 'user', 'job_id', 'status', 'result', 'error_message', 
+                            'is_continuation', 'parent_job', 'continuation_count',
                             'created_at', 'started_at', 'completed_at']
 
 

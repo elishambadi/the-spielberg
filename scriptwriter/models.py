@@ -130,6 +130,11 @@ class Job(models.Model):
     result = models.TextField(blank=True)
     error_message = models.TextField(blank=True)
     
+    # Continuation tracking
+    is_continuation = models.BooleanField(default=False)
+    parent_job = models.ForeignKey('self', on_delete=models.SET_NULL, null=True, blank=True, related_name='continuations')
+    continuation_count = models.IntegerField(default=0)
+    
     # Metadata
     created_at = models.DateTimeField(auto_now_add=True)
     started_at = models.DateTimeField(null=True, blank=True)
