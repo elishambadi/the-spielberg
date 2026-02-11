@@ -35,7 +35,7 @@ print("Allowed Hosts:", ALLOWED_HOSTS)
 # CSRF Configuration
 CSRF_COOKIE_HTTPONLY = False  # Allow JavaScript to read CSRF token
 CSRF_USE_SESSIONS = False
-
+CSRF_TRUSTED_ORIGINS = [origin.strip() for origin in os.environ.get('CSRF_TRUSTED_ORIGINS', 'http://localhost:8000, http://127.0.0.1:8000').split(',')]
 
 # Application definition
 
@@ -151,7 +151,7 @@ USE_TZ = True
 
 STATIC_URL = '/static/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
-STATICFILES_DIRS = [BASE_DIR / "static"] if os.path.exists(BASE_DIR / "static") else []
+STATICFILES_DIRS = [BASE_DIR / "static"]
 
 # Media files
 MEDIA_URL = '/media/'
